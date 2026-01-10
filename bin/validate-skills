@@ -1,0 +1,80 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use AgentSkills\Validator\Validator;
+
+/**
+ * CLI tool to validate Agent Skills in CI/CD environments.
+ * 
+ * Usage:
+ *   php bin/validate-skills [path1] [path2] ...
+ *   php bin/validate-skills --changed  # Validates only changed skills in git
+ */
+
+$validator = new Validator();
+$exitCode = 0;
+$paths = [];
+
+// Parse arguments
+if (in_array('--changed', $argv) || in_array('-c', $argv)) {
+    // Get changed directories from git
+    $paths = getChangedSkillPaths();
+    if (empty($paths)) {
+        echo "No changed skills found.\n";
+        exit(0);
+    }
+} else {
+    // Use provided paths or default to current directory
+    $paths = array_slice($argv, 1);
+    if (empty($paths)) {
+        $paths = [getcwd()];
+    }
+}
+
+// Validate each path
+foreach ($paths as $path) {
+    if (!is_dir($path)) {
+        echo "Error: Path is not a directory: $path\n";
+        $exitCode = 1;
+        continue;
+    }
+    
+    $result = $validator->validateSkill($path);
+    
+    $skillName = basename($path);
+    if ($result['valid']) {
+        echo "✓ $skillName: Valid\n";
+    } else {
+        echo "✗ $skillName: Invalid\n";
+        foreach ($result['errors'] as $error) {
+            echo "  - $error\n";
+        }
+        $exitCode = 1;
+    }
+}
+
+exit($exitCode);
+
+/**
+ * Get paths to changed skill directories from git.
+ */
+function getChangedSkillPaths(): array {
+    // Get changed files
+    $changedFiles = [];
+    exec('git diff --name-only --diff-filter=ACMR HEAD', $changedFiles);
+    
+    $skillPaths = [];
+    foreach ($changedFiles as $file) {
+        // If SKILL.md changed, get its directory
+        if (basename($file) === 'SKILL.md') {
+            $dir = dirname($file);
+            if ($dir !== '.' && !in_array($dir, $skillPaths)) {
+                $skillPaths[] = $dir;
+            }
+        }
+    }
+    
+    return $skillPaths;
+}
