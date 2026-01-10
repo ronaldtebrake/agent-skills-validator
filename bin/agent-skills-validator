@@ -9,8 +9,10 @@ use AgentSkills\Validator\Validator;
  * CLI tool to validate Agent Skills in CI/CD environments.
  * 
  * Usage:
- *   php bin/validate-skills [path1] [path2] ...
- *   php bin/validate-skills --changed  # Validates only changed skills in git
+ *   php bin/agent-skills-validator [path1] [path2] ...
+ *   php bin/agent-skills-validator validate [path1] [path2] ...  # 'validate' subcommand is optional
+ *   php bin/agent-skills-validator --changed  # Validates only changed skills in git
+ *   vendor/bin/agent-skills-validator validate [path1] [path2] ...  # When installed via Composer
  */
 
 $validator = new Validator();
@@ -18,7 +20,14 @@ $exitCode = 0;
 $paths = [];
 
 // Parse arguments
-if (in_array('--changed', $argv) || in_array('-c', $argv)) {
+$args = array_slice($argv, 1);
+
+// Handle 'validate' subcommand - ignore it if present as first argument
+if (!empty($args) && $args[0] === 'validate') {
+    $args = array_slice($args, 1);
+}
+
+if (in_array('--changed', $args) || in_array('-c', $args)) {
     // Get changed directories from git
     $paths = getChangedSkillPaths();
     if (empty($paths)) {
@@ -27,7 +36,7 @@ if (in_array('--changed', $argv) || in_array('-c', $argv)) {
     }
 } else {
     // Use provided paths or default to current directory
-    $paths = array_slice($argv, 1);
+    $paths = $args;
     if (empty($paths)) {
         $paths = [getcwd()];
     }

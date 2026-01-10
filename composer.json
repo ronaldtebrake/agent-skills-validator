@@ -26,6 +26,9 @@
             "AgentSkills\\Validator\\Tests\\": "tests/"
         }
     },
+    "bin": [
+        "bin/agent-skills-validator"
+    ],
     "config": {
         "sort-packages": true
     },

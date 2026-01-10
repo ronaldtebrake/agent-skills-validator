@@ -89,14 +89,20 @@ This skill provides awesome functionality for AI agents.
 
 ## CLI Tool for CI/CD
 
-The package includes a CLI tool for validating skills in CI/CD environments:
+The package includes a CLI tool for validating skills in CI/CD environments. When installed via Composer, the binary is available at `vendor/bin/agent-skills-validator`:
 
 ```bash
-# Validate specific skill directories
-php bin/validate-skills path/to/skill1 path/to/skill2
+# Validate specific skill directories (when installed via Composer)
+vendor/bin/agent-skills-validator validate path/to/skill1 path/to/skill2
+# Or without the 'validate' subcommand
+vendor/bin/agent-skills-validator path/to/skill1 path/to/skill2
 
 # Validate only changed skills (from git)
-php bin/validate-skills --changed
+vendor/bin/agent-skills-validator --changed
+
+# When running from the repository directly
+php bin/agent-skills-validator path/to/skill1 path/to/skill2
+php bin/agent-skills-validator --changed
 ```
 
 The CLI tool exits with code 0 on success and 1 if validation fails, making it suitable for CI/CD pipelines.
@@ -130,22 +136,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist
       
       - name: Validate changed skills
-        run: php bin/validate-skills --changed
-```
-
-### GitLab CI Example
-
-Add to `.gitlab-ci.yml`:
-
-```yaml
-validate-skills:
-  image: php:8.1-cli
-  script:
-    - composer install --no-interaction --prefer-dist
-    - php bin/validate-skills --changed
-  only:
-    changes:
-      - "**/SKILL.md"
+        run: vendor/bin/agent-skills-validator --changed
 ```
 
 ## Testing
