@@ -92,18 +92,17 @@ This skill provides awesome functionality for AI agents.
 The package includes a CLI tool for validating skills in CI/CD environments. When installed via Composer, the binary is available at `vendor/bin/agent-skills-validator`:
 
 ```bash
-# Validate specific skill directories (when installed via Composer)
-vendor/bin/agent-skills-validator validate path/to/skill1 path/to/skill2
-# Or without the 'validate' subcommand
-vendor/bin/agent-skills-validator path/to/skill1 path/to/skill2
-
-# Validate only changed skills (from git)
-vendor/bin/agent-skills-validator --changed
+# Validate all skills in a directory (automatically discovers subdirectories with SKILL.md)
+vendor/bin/agent-skills-validator .claude/skills
 
 # When running from the repository directly
-php bin/agent-skills-validator path/to/skill1 path/to/skill2
-php bin/agent-skills-validator --changed
+php bin/agent-skills-validator .claude/skills
+
+# If no path is provided, it defaults to the current directory
+vendor/bin/agent-skills-validator
 ```
+
+**Directory Discovery**: If you provide a directory path that doesn't contain a `SKILL.md` file, the tool will automatically search for all subdirectories containing `SKILL.md` files and validate them. If a directory already contains `SKILL.md`, it will be validated directly.
 
 The CLI tool exits with code 0 on success and 1 if validation fails, making it suitable for CI/CD pipelines.
 
@@ -135,8 +134,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
       
-      - name: Validate changed skills
-        run: vendor/bin/agent-skills-validator --changed
+      - name: Validate skills
+        run: vendor/bin/agent-skills-validator .claude/skills
 ```
 
 ## Testing

@@ -9,40 +9,24 @@ use AgentSkills\Validator\Validator;
  * CLI tool to validate Agent Skills in CI/CD environments.
  * 
  * Usage:
- *   php bin/agent-skills-validator [path1] [path2] ...
- *   php bin/agent-skills-validator validate [path1] [path2] ...  # 'validate' subcommand is optional
- *   php bin/agent-skills-validator --changed  # Validates only changed skills in git
- *   vendor/bin/agent-skills-validator validate [path1] [path2] ...  # When installed via Composer
+ *   php bin/agent-skills-validator [path]
+ *   vendor/bin/agent-skills-validator [path]
+ * 
+ * If a path is provided, it will validate all skills in that directory.
+ * If a path is a directory containing SKILL.md, it will be validated directly.
+ * If a path is a directory without SKILL.md, it will search for subdirectories containing SKILL.md.
+ * If no path is provided, it defaults to the current directory.
  */
 
 $validator = new Validator();
 $exitCode = 0;
-$paths = [];
 
-// Parse arguments
+// Parse arguments - use provided path or default to current directory
 $args = array_slice($argv, 1);
+$paths = !empty($args) ? $args : [getcwd()];
 
-// Handle 'validate' subcommand - ignore it if present as first argument
-if (!empty($args) && $args[0] === 'validate') {
-    $args = array_slice($args, 1);
-}
-
-if (in_array('--changed', $args) || in_array('-c', $args)) {
-    // Get changed directories from git
-    $paths = getChangedSkillPaths();
-    if (empty($paths)) {
-        echo "No changed skills found.\n";
-        exit(0);
-    }
-} else {
-    // Use provided paths or default to current directory
-    $paths = $args;
-    if (empty($paths)) {
-        $paths = [getcwd()];
-    }
-}
-
-// Validate each path
+// Expand directories to discover skill subdirectories
+$skillPaths = [];
 foreach ($paths as $path) {
     if (!is_dir($path)) {
         echo "Error: Path is not a directory: $path\n";
@@ -50,9 +34,31 @@ foreach ($paths as $path) {
         continue;
     }
     
-    $result = $validator->validateSkill($path);
+    // Check if this directory itself is a skill (contains SKILL.md)
+    $skillMdPath = $path . '/SKILL.md';
+    if (file_exists($skillMdPath)) {
+        // This is a skill directory, validate it directly
+        $skillPaths[] = $path;
+    } else {
+        // This is a parent directory, find all skill subdirectories
+        $discoveredSkills = discoverSkillDirectories($path);
+        if (empty($discoveredSkills)) {
+            echo "Warning: No skills found in: $path\n";
+        } else {
+            $skillPaths = array_merge($skillPaths, $discoveredSkills);
+        }
+    }
+}
+
+// Remove duplicates and sort for consistent output
+$skillPaths = array_unique($skillPaths);
+sort($skillPaths);
+
+// Validate each skill path
+foreach ($skillPaths as $skillPath) {
+    $result = $validator->validateSkill($skillPath);
     
-    $skillName = basename($path);
+    $skillName = basename($skillPath);
     if ($result['valid']) {
         echo "✓ $skillName: Valid\n";
     } else {
@@ -67,20 +73,33 @@ foreach ($paths as $path) {
 exit($exitCode);
 
 /**
- * Get paths to changed skill directories from git.
+ * Discover all skill directories within a given directory.
+ * 
+ * A skill directory is a subdirectory that contains a SKILL.md file.
+ * 
+ * @param string $directory
+ *   The directory to search in.
+ * 
+ * @return array
+ *   Array of skill directory paths.
  */
-function getChangedSkillPaths(): array {
-    // Get changed files
-    $changedFiles = [];
-    exec('git diff --name-only --diff-filter=ACMR HEAD', $changedFiles);
-    
+function discoverSkillDirectories(string $directory): array {
     $skillPaths = [];
-    foreach ($changedFiles as $file) {
-        // If SKILL.md changed, get its directory
-        if (basename($file) === 'SKILL.md') {
-            $dir = dirname($file);
-            if ($dir !== '.' && !in_array($dir, $skillPaths)) {
-                $skillPaths[] = $dir;
+    
+    if (!is_dir($directory)) {
+        return $skillPaths;
+    }
+    
+    $iterator = new \RecursiveIteratorIterator(
+        new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS),
+        \RecursiveIteratorIterator::SELF_FIRST
+    );
+    
+    foreach ($iterator as $item) {
+        if ($item->isDir()) {
+            $skillMdPath = $item->getPathname() . '/SKILL.md';
+            if (file_exists($skillMdPath)) {
+                $skillPaths[] = $item->getPathname();
             }
         }
     }
