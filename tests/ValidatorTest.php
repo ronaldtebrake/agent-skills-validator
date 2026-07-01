@@ -367,6 +367,42 @@ YAML;
     }
 
     /**
+     * Test validation passes for a realistic OpenClaw skill metadata block.
+     */
+    public function testValidTweetClawStyleSkillWithMetadata(): void
+    {
+        $skillPath = $this->tempDir . '/tweetclaw';
+        mkdir($skillPath, 0755, true);
+
+        $skillMd = <<<'YAML'
+---
+name: tweetclaw
+description: Use TweetClaw for reviewed OpenClaw X/Twitter source packets, monitor summaries, and approval-gated account actions.
+license: MIT
+compatibility: OpenClaw plugin published as npm:@xquik/tweetclaw
+metadata:
+  package: "@xquik/tweetclaw"
+  clawhub: "https://clawhub.ai/plugins/@xquik/tweetclaw"
+---
+# TweetClaw
+
+Use read-style tools for source gathering before any approved account action.
+YAML;
+
+        file_put_contents($skillPath . '/SKILL.md', $skillMd);
+
+        $result = $this->validator->validateSkill($skillPath);
+
+        $this->assertTrue($result['valid']);
+        $this->assertEmpty($result['errors']);
+        $this->assertEquals('@xquik/tweetclaw', $result['metadata']['metadata']['package']);
+        $this->assertEquals(
+            'https://clawhub.ai/plugins/@xquik/tweetclaw',
+            $result['metadata']['metadata']['clawhub']
+        );
+    }
+
+    /**
      * Remove directory recursively.
      */
     private function removeDirectory(string $directory): void
