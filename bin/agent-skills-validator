@@ -1,7 +1,17 @@
 #!/usr/bin/env php
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// Installed as a dependency, the autoload lives in the consumer's vendor/.
+// In this repository it lives next to bin/.
+$autoload = __DIR__ . '/../vendor/autoload.php';
+if (!file_exists($autoload)) {
+    $autoload = __DIR__ . '/../../../autoload.php';
+}
+if (!file_exists($autoload)) {
+    fwrite(STDERR, "Could not find vendor/autoload.php. Run composer install.\n");
+    exit(1);
+}
+require_once $autoload;
 
 use AgentSkills\Validator\Validator;
 
